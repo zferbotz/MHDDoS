@@ -46,7 +46,7 @@ def handle_start(message):
             "📌 *Como usar:*\n"
             "```/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>```\n\n"
             "💡 *Ejemplo:*\n"
-            "```/ping UDP 143.92.125.230:10013 10 900```\n\n"
+            "```/ping UDP 143.92.125.230:10013 3 120```\n\n"
             "⚠️ *Atención:* Este bot fue creado con fines educativos."
         ),
         reply_markup=markup,

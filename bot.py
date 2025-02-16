@@ -5,7 +5,7 @@ import time
 import atexit
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-BOT_TOKEN = "7987563641:AAEkQcErl3bFlpSy8ozDq7DcrZgp3SpF7yE"
+BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
 ADMIN_ID = 6348583777
 START_PY_PATH = "workspaces/MHDDoS/start.py"
 

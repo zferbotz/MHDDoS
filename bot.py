@@ -7,6 +7,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
 ADMIN_ID = 6348583777
+GROUP_ID = --1002260050481  # Reemplaza con el ID real de tu grupo
 START_PY_PATH = "/workspaces/MHDDoS/start.py"
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -20,8 +21,19 @@ def close_db_connection():
     pass  # No hay conexión de base de datos que cerrar
 
 
+def is_allowed(message):
+    """ Verifica si el mensaje proviene del grupo permitido o si es del admin en privado. """
+    if message.chat.id == GROUP_ID or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
+        return True
+    bot.reply_to(message, "❌ Este bot solo funciona en este grupo en específico.")
+    return False
+
+
 @bot.message_handler(commands=["start"])
 def handle_start(message):
+    if not is_allowed(message):
+        return
+
     markup = InlineKeyboardMarkup()
     button = InlineKeyboardButton(
         text="💻 SOPORTE - OFICIAL 💻",
@@ -46,6 +58,9 @@ def handle_start(message):
 
 @bot.message_handler(commands=["ping"])
 def handle_ping(message):
+    if not is_allowed(message):
+        return
+
     telegram_id = message.from_user.id
 
     # Verificar cooldown
@@ -106,7 +121,7 @@ def handle_stop_attack(call):
 
     if call.from_user.id != telegram_id:
         bot.answer_callback_query(
-            call.id, "❌ Solo el usuario que inicio el ataque puede pararlo."
+            call.id, "❌ Solo el usuario que inició el ataque puede pararlo."
         )
         return
 
@@ -115,7 +130,7 @@ def handle_stop_attack(call):
         process.terminate()
         del active_attacks[telegram_id]
 
-        bot.answer_callback_query(call.id, "✅ Ataque parado con suceso.")
+        bot.answer_callback_query(call.id, "✅ Ataque parado con éxito.")
         bot.edit_message_text(
             "*[⛔] ATAQUE PARADO [⛔]*",
             chat_id=call.message.chat.id,

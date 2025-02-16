@@ -7,7 +7,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
 ADMIN_ID = 6348583777
-GROUP_ID = --1002260050481  # Reemplaza con el ID real de tu grupo
+GROUP_ID = -1002260050481  # Reemplaza con el ID real de tu grupo
 START_PY_PATH = "/workspaces/MHDDoS/start.py"
 
 bot = telebot.TeleBot(BOT_TOKEN)

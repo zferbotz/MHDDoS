@@ -3,7 +3,7 @@ import subprocess
 import json
 import os
 import time
-from threading import Lock
+from threading import Lock, Thread
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
@@ -16,13 +16,19 @@ db_lock = Lock()
 cooldowns = {}
 active_attacks = {}
 
-# Ruta del archivo JSON
+# Rutas de archivos JSON
 groups_file = "groups.json"
+users_file = "users.json"
 
 # Verifica si el archivo de grupos existe, si no, lo crea
 if not os.path.exists(groups_file):
     with open(groups_file, "w") as f:
         json.dump({"groups": []}, f)
+
+# Verifica si el archivo de usuarios existe, si no, lo crea
+if not os.path.exists(users_file):
+    with open(users_file, "w") as f:
+        json.dump({"users": []}, f)
 
 # Guardar tiempo de inicio del bot
 start_time = time.time()
@@ -38,6 +44,23 @@ def save_groups(groups):
     with open(groups_file, "w") as f:
         json.dump({"groups": groups}, f)
 
+def load_users():
+    """Carga la lista de usuarios desde el archivo JSON."""
+    with open(users_file, "r") as f:
+        return json.load(f)["users"]
+
+def save_users(users):
+    """Guarda la lista de usuarios en el archivo JSON."""
+    with open(users_file, "w") as f:
+        json.dump({"users": users}, f)
+
+def add_user(user_id):
+    """Agrega un usuario a la lista si no está registrado."""
+    users = load_users()
+    if user_id not in users:
+        users.append(user_id)
+        save_users(users)
+
 def is_allowed(message):
     """Verifica si el mensaje proviene de un grupo autorizado o si es del admin en privado."""
     groups = load_groups()
@@ -46,29 +69,60 @@ def is_allowed(message):
     bot.reply_to(message, f"❌ *¡Este bot solo funciona en los grupos autorizados!*\n🔗 Únete a nuestro grupo de *Free Fire* aquí: {GROUP_LINK}")
     return False
 
+def check_shutdown_time():
+    """Verifica el tiempo restante y notifica a los grupos cuando falten 5 minutos."""
+    while True:
+        elapsed_time = time.time() - start_time
+        remaining_time = max(0, 140 * 60 - elapsed_time)  # 140 minutos en segundos
+
+        if remaining_time <= 300:  # 5 minutos en segundos
+            groups = load_groups()
+            for group_id in groups:
+                try:
+                    bot.send_message(
+                        group_id,
+                        "⚠️ *Aviso Importante:*\n\n"
+                        "El bot se apagará en **5 minutos** debido a límites de tiempo.\n"
+                        "Un administrador lo reactivará pronto. Por favor, sean pacientes.\n\n"
+                        "¡Gracias por su comprensión! 🙏",
+                        parse_mode="Markdown",
+                    )
+                except Exception as e:
+                    print(f"No se pudo enviar mensaje al grupo {group_id}: {str(e)}")
+
+            # Esperar a que el bot se apague
+            time.sleep(300)  # Esperar 5 minutos
+            break
+
+        time.sleep(60)  # Verificar cada minuto
+
+def notify_groups_bot_started():
+    """Notifica a los grupos que el bot ha sido encendido."""
+    groups = load_groups()
+    for group_id in groups:
+        try:
+            bot.send_message(
+                group_id,
+                "✅ *¡El bot ha sido reactivado!*\n\n"
+                "Ya puedes seguir utilizando todos los comandos disponibles.\n\n"
+                "¡Gracias por su paciencia! 😊",
+                parse_mode="Markdown",
+            )
+        except Exception as e:
+            print(f"No se pudo enviar mensaje al grupo {group_id}: {str(e)}")
+
 @bot.message_handler(commands=["start"])
 def handle_start(message):
-    if not is_allowed(message):
-        return
+    add_user(message.chat.id)  # Asegura que el usuario quede registrado
 
     markup = InlineKeyboardMarkup()
-    button = InlineKeyboardButton(
-        text="💻 *SOPORTE - OFICIAL* 💻",
-        url=f"tg://user?id={ADMIN_ID}"
-    )
+    button = InlineKeyboardButton("💻 *SOPORTE - OFICIAL* 💻", url=f"tg://user?id={ADMIN_ID}")
     markup.add(button)
 
     bot.send_message(
         message.chat.id,
-        (
-            "🎮 *¡Bienvenido al Bot de Ping MHDDoS para Free Fire!*\n\n"
-            "🚀 *Prepárate para dominar el campo de batalla* con nuestras poderosas herramientas de DDoS.\n\n"
-            "📌 *Cómo usarlo:*\n"
-            "```/ping <TIPO> <IP/HOST:PUERTO> <HILOS> <MS>```\n\n"
-            "💡 *Ejemplo de uso:*\n"
-            "```/ping UDP 143.92.125.230:10013 3 120```\n\n"
-            "⚠️ *Aviso Importante:* Este bot fue creado para *finalidades educativas*, ¡usa con responsabilidad!"
-        ),
+        "🎮 *¡Bienvenido al Bot de Ping MHDDoS!* 🚀\n\n"
+        "🔧 Usa `/help` para ver los comandos disponibles.",
         reply_markup=markup,
         parse_mode="Markdown",
     )
@@ -231,7 +285,8 @@ def handle_help(message):
             "3. `/addgroup <ID del grupo>`: Agrega un grupo a la lista de grupos permitidos (solo admin).\n"
             "4. `/removegroup <ID del grupo>`: Elimina un grupo de la lista de grupos permitidos (solo admin).\n"
             "5. `/help`: Muestra esta ayuda.\n"
-            "6. `/timeactive`: Muestra el tiempo activo del bot y el tiempo restante antes de que se cierre.\n\n"
+            "6. `/timeactive`: Muestra el tiempo activo del bot y el tiempo restante antes de que se cierre.\n"
+            "7. `/broadcast <mensaje>`: Envía un mensaje a todos los usuarios registrados (solo admin).\n\n"
             "¡Juega con responsabilidad y diviértete! 🎮"
         ),
         parse_mode="Markdown",
@@ -262,5 +317,38 @@ def handle_timeactive(message):
         parse_mode="Markdown"
     )
 
+@bot.message_handler(commands=["broadcast"])
+def handle_broadcast(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ *Solo el admin puede usar este comando.*")
+        return
+
+    text = message.text.replace("/broadcast", "").strip()
+    if not text:
+        bot.reply_to(message, "❌ *Debes escribir un mensaje después de /broadcast.*")
+        return
+
+    users = load_users()
+    success_count, fail_count = 0, 0
+
+    for user_id in users:
+        try:
+            bot.send_message(user_id, f"📢 *Mensaje del admin:* {text}", parse_mode="Markdown")
+            success_count += 1
+        except Exception as e:
+            fail_count += 1
+            print(f"No se pudo enviar mensaje a {user_id}: {str(e)}")
+
+    bot.reply_to(message, f"✅ Mensaje enviado a {success_count} usuarios. ❌ Falló en {fail_count}.")
+
 if __name__ == "__main__":
+    # Notificar a los grupos que el bot ha sido encendido
+    notify_groups_bot_started()
+
+    # Iniciar el hilo para verificar el tiempo de apagado
+    shutdown_thread = Thread(target=check_shutdown_time)
+    shutdown_thread.daemon = True
+    shutdown_thread.start()
+
+    # Iniciar el bot
     bot.infinity_polling()

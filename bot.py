@@ -64,6 +64,7 @@ def handle_menu(message):
         parse_mode="Markdown"
     )
 
+
 @bot.message_handler(commands=["ping"])
 def handle_ping(message):
     if not is_allowed(message):
@@ -172,10 +173,11 @@ def handle_unmute(message):
         if user_id in muted_users:
             del muted_users[user_id]
             bot.restrict_chat_member(
-                message.chat.id,
-                user_id,
-                ChatPermissions(can_send_messages=True))
-            bot.reply_to(message, "🔊 Usuario desmuteado")
+    message.chat.id,
+    user_id,
+    ChatPermissions(can_send_messages=True)
+)
+bot.reply_to(message, "🔊 Usuario desmuteado")
 
 # ================= SISTEMA DE ENLACES Y PALABRAS =================
 @bot.message_handler(func=lambda message: True)
@@ -218,6 +220,7 @@ def handle_messages(message):
 # ================= COMANDOS ADICIONALES =================
 @bot.message_handler(commands=["help"])
 def handle_help(message):
+    logging.info("Comando /help recibido")
     help_text = (
         "🛠️ *Comandos Disponibles:*\n\n"
         "⚙️ Administración:\n"

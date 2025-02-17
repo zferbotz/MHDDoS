@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import telebot
 import subprocess
 import json
@@ -357,6 +358,24 @@ def handle_removegroup(message):
         bot.reply_to(message, " *Por favor, proporciona un ID de grupo válido.*")
     except ValueError:
         bot.reply_to(message, " *El ID de grupo debe ser un número válido.*")
+
+@bot.message_handler(commands=["listgroups"])
+def handle_listgroups(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, " *Solo el admin puede ver la lista de grupos.*")
+        return
+
+    groups = load_groups()
+    if not groups:
+        bot.reply_to(message, " *No hay grupos autorizados.*")
+        return
+
+    groups_list = "\n".join([f" *Grupo ID:* {group_id}" for group_id in groups])
+    bot.reply_to(
+        message,
+        f" *Grupos autorizados:*\n{groups_list}",
+        parse_mode="Markdown"
+    )
 
 @bot.message_handler(commands=["help"])
 def handle_help(message):

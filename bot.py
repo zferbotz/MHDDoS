@@ -10,15 +10,13 @@ logging.basicConfig(level=logging.INFO)
 BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
 ADMIN_ID = 6348583777
 GROUP_ID = -1002260050481
-GROUP_LINK = "https://t.me/zFerCrashGoup"
 START_PY_PATH = "/workspaces/MHDDoS/start.py"
 
 # Inicialización del bot
 bot = telebot.TeleBot(BOT_TOKEN)
 cooldowns = {}
 active_attacks = {}
-blocked_words = set(["palabra1", "palabra2"])  # Usando conjunto para mejor performance
-hidden_links = {}
+blocked_words = set(["palabra1", "palabra2"])
 muted_users = {}
 db_lock = Lock()
 
@@ -63,7 +61,6 @@ def handle_menu(message):
         reply_markup=markup,
         parse_mode="Markdown"
     )
-
 
 @bot.message_handler(commands=["ping"])
 def handle_ping(message):
@@ -113,29 +110,6 @@ def handle_ping(message):
         logging.error(f"Error en ping: {e}")
         bot.reply_to(message, f"❌ Error: {str(e)}")
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("stop_"))
-def handle_stop_attack(call):
-    user_id = int(call.data.split("_")[1])
-    if call.from_user.id != user_id:
-        bot.answer_callback_query(call.id, "❌ Solo el que inicio el ataque lo puede parar")
-        return
-
-    if user_id in active_attacks:
-        try:
-            active_attacks[user_id].terminate()
-            del active_attacks[user_id]
-            bot.answer_callback_query(call.id, "✅ Ataque detenido")
-            bot.edit_message_text(
-                "🛑 *Ataque Detenido* 🛑",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                parse_mode="Markdown"
-            )
-        except Exception as e:
-            logging.error(f"Error deteniendo ataque: {e}")
-            bot.answer_callback_query(call.id, "❌ Error al detener")
-
-# ================= MODERACIÓN =================
 @bot.message_handler(commands=["mute"])
 def handle_mute(message):
     if not is_admin(message.chat.id, message.from_user.id):
@@ -178,7 +152,8 @@ def handle_unmute(message):
                 ChatPermissions(can_send_messages=True)
             )
             bot.reply_to(message, "🔊 Usuario desmuteado")
-        
+
+# ================= SISTEMA DE ENLACES Y PALABRAS =================
 @bot.message_handler(func=lambda message: True)
 def handle_messages(message):
     if not is_allowed(message):
@@ -202,11 +177,6 @@ def handle_messages(message):
     # Detectar enlaces
     if "http" in text:
         link_id = str(message.message_id)
-        hidden_links[link_id] = {
-            "text": message.text,
-            "user": message.from_user.id,
-            "timestamp": time.time()
-        }
         bot.delete_message(message.chat.id, message.message_id)
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("👁️ Mostrar Enlace", callback_data=f"show_{link_id}"))

@@ -21,10 +21,10 @@ def close_db_connection():
     pass  # No hay conexión de base de datos que cerrar
 
 def is_allowed(message):
-    """ Verifica si el mensaje proviene del grupo permitido o si es del admin en privado. """
-    if message.chat.id == GROUP_ID or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
+    """ Verifica si el mensaje proviene de un grupo permitido o del admin en privado. """
+    if message.chat.id in GROUP_IDS or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
         return True
-    bot.reply_to(message, "❌ Este bot solo funciona en un grupo en específico.\n🔗 Únete a este grupo para poder utilizar este bot: " + GROUP_LINK)
+    bot.reply_to(message, "❌ Este bot solo funciona en grupos específicos.\n🔗 Únete a nuestro grupo principal: " + GROUP_LINK)
     return False
 
 @bot.message_handler(commands=["start"])

@@ -180,6 +180,38 @@ def handle_addgroup(message):
     except ValueError:
         bot.reply_to(message, "❌ *El ID de grupo debe ser un número válido.*")
 
+@bot.message_handler(commands=["removegroup"])
+def handle_removegroup(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ *Solo el admin puede eliminar el bot de los grupos.*")
+        return
+
+    if message.chat.type != "private":
+        bot.reply_to(message, "❌ *Este comando solo puede usarse en privado.*")
+        return
+
+    try:
+        group_id = int(message.text.split()[1])
+        groups = load_groups()
+
+        # Verificar si el grupo está en la lista
+        if group_id not in groups:
+            bot.reply_to(message, "❌ *Este grupo no está en la lista.*")
+            return
+
+        # Eliminar el grupo y guardar
+        groups.remove(group_id)
+        save_groups(groups)
+
+        # El bot abandona el grupo
+        bot.leave_chat(group_id)
+
+        bot.reply_to(message, f"✅ *Bot eliminado correctamente del grupo {group_id}.*")
+    except IndexError:
+        bot.reply_to(message, "❌ *Por favor, proporciona un ID de grupo válido.*")
+    except ValueError:
+        bot.reply_to(message, "❌ *El ID de grupo debe ser un número válido.*")
+
 @bot.message_handler(commands=["help"])
 def handle_help(message):
     if not is_allowed(message):
@@ -189,12 +221,13 @@ def handle_help(message):
         message.chat.id,
         (
             "🔧 *¿Cómo usar este bot?* 🤖\n\n"
+            "Este bot está diseñado para ayudarte a ejecutar ataques de prueba con fines educativos en Free Fire.\n\n"
             "*Comandos disponibles:*\n"
             "1. `/start`: Inicia el bot y te da una breve introducción.\n"
             "2. `/ping <TIPO> <IP/HOST:PUERTO> <HILOS> <MS>`: Inicia un ataque de ping.\n"
             "3. `/addgroup <ID del grupo>`: Agrega un grupo a la lista de grupos permitidos (solo admin).\n"
-            "4. `/help`: Muestra esta ayuda.\n\n"
-            "⚠️ *Recuerda:* Este bot es para *finalidades educativas* y *no* debe ser usado con fines maliciosos.\n"
+            "4. `/removegroup <ID del grupo>`: Elimina un grupo de la lista de grupos permitidos (solo admin).\n"
+            "5. `/help`: Muestra esta ayuda.\n\n"
             "¡Juega con responsabilidad y diviértete! 🎮"
         ),
         parse_mode="Markdown",

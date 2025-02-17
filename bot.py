@@ -169,15 +169,15 @@ def handle_unmute(message):
         return
 
     if message.reply_to_message:
-    user_id = message.reply_to_message.from_user.id
-    if user_id in muted_users:
-        del muted_users[user_id]
-        bot.restrict_chat_member(
-            message.chat.id,
-            user_id,
-            ChatPermissions(can_send_messages=True)
-        )
-        bot.reply_to(message, "🔊 Usuario desmuteado")
+        user_id = message.reply_to_message.from_user.id
+        if user_id in muted_users:
+            del muted_users[user_id]
+            bot.restrict_chat_member(
+                message.chat.id,
+                user_id,
+                ChatPermissions(can_send_messages=True)
+            )
+            bot.reply_to(message, "🔊 Usuario desmuteado")
         
 @bot.message_handler(func=lambda message: True)
 def handle_messages(message):

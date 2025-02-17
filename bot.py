@@ -111,18 +111,17 @@ def handle_ping(message):
         markup.add(InlineKeyboardButton("✅ Confirmar Detener Ataque", callback_data=f"stop_{telegram_id}"))
 
         bot.reply_to(
-            message,
-            (
-                "*[✅] ATAQUE INICIADO - 200 [✅]*\n\n"
-                f"📍 *IP/Host:Porta:* {ip_port}\n"
-                f"⚙️ *Tipo:* {attack_type}\n"
-                f"🧵 *Threads:* {threads}\n"
-                f"⏳ *Tiempo (ms):* {duration}\n"
-                f"💻 *Comando ejecutado:* `ping`\n\n"
-                "⚠️ *Este bot fue creado por* @xFernandoh"
-            ),
-            reply_markup=markup,
-            parse_mode="Markdown",
+    message,
+    (
+        "🔥 *Ataque Iniciado* 🔥\n\n"
+        f"📍 *IP:* {ip_port}\n"
+        f"⚙️ *Tipo:* {attack_type}\n"
+        f"🧵 *Threads:* {threads}\n"
+        f"⏳ *Duración:* {duration}ms\n\n"
+        "🤖 *Este bot fue creado por* @xFernandoh"
+    ),
+    reply_markup=markup,
+    parse_mode="Markdown",
         )
     except Exception as e:
         bot.reply_to(message, f"❌ Error al iniciar el ataque: {str(e)}")

@@ -189,9 +189,12 @@ def handle_stop_attack(call):
     telegram_id = int(call.data.split("_")[1])
 
     if call.from_user.id != telegram_id:
-        bot.answer_callback_query(
-            call.id, "❌ *Solo el usuario que inició el ataque puede pararlo.*"
-        )
+        try:
+            bot.answer_callback_query(
+                call.id, "❌ *Solo el usuario que inició el ataque puede pararlo.*"
+            )
+        except Exception as e:
+            print(f"Error al responder a la consulta de callback: {str(e)}")
         return
 
     if telegram_id in active_attacks:
@@ -199,17 +202,23 @@ def handle_stop_attack(call):
         process.terminate()
         del active_attacks[telegram_id]
 
-        bot.answer_callback_query(call.id, "✅ *Ataque detenido con éxito.*")
-        bot.edit_message_text(
-            "*[⛔] *ATAQUE PARADO* [⛔]*",
-            chat_id=call.message.chat.id,
-            message_id=call.message.id,
-            parse_mode="Markdown",
-        )
-        time.sleep(3)
-        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+        try:
+            bot.answer_callback_query(call.id, "✅ *Ataque detenido con éxito.*")
+            bot.edit_message_text(
+                "*[⛔] *ATAQUE PARADO* [⛔]*",
+                chat_id=call.message.chat.id,
+                message_id=call.message.id,
+                parse_mode="Markdown",
+            )
+            time.sleep(3)
+            bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+        except Exception as e:
+            print(f"Error al responder a la consulta de callback o editar el mensaje: {str(e)}")
     else:
-        bot.answer_callback_query(call.id, "❌ *No hay ataque activo para detener.*")
+        try:
+            bot.answer_callback_query(call.id, "❌ *No hay ataque activo para detener.*")
+        except Exception as e:
+            print(f"Error al responder a la consulta de callback: {str(e)}")
 
 @bot.message_handler(commands=["addgroup"])
 def handle_addgroup(message):
@@ -286,7 +295,8 @@ def handle_help(message):
             "4. `/removegroup <ID del grupo>`: Elimina un grupo de la lista de grupos permitidos (solo admin).\n"
             "5. `/help`: Muestra esta ayuda.\n"
             "6. `/timeactive`: Muestra el tiempo activo del bot y el tiempo restante antes de que se cierre.\n"
-            "7. `/broadcast <mensaje>`: Envía un mensaje a todos los usuarios registrados (solo admin).\n\n"
+            "7. `/broadcast <mensaje>`: Envía un mensaje a todos los usuarios registrados (solo admin).\n"
+            "8. `/broadcastgroup <mensaje>`: Envía un mensaje a todos los grupos autorizados (solo admin).\n\n"
             "¡Juega con responsabilidad y diviértete! 🎮"
         ),
         parse_mode="Markdown",
@@ -340,6 +350,30 @@ def handle_broadcast(message):
             print(f"No se pudo enviar mensaje a {user_id}: {str(e)}")
 
     bot.reply_to(message, f"✅ Mensaje enviado a {success_count} usuarios. ❌ Falló en {fail_count}.")
+
+@bot.message_handler(commands=["broadcastgroup"])
+def handle_broadcastgroup(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ *Solo el admin puede usar este comando.*")
+        return
+
+    text = message.text.replace("/broadcastgroup", "").strip()
+    if not text:
+        bot.reply_to(message, "❌ *Debes escribir un mensaje después de /broadcastgroup.*")
+        return
+
+    groups = load_groups()
+    success_count, fail_count = 0, 0
+
+    for group_id in groups:
+        try:
+            bot.send_message(group_id, f"📢 *Mensaje del admin:* {text}", parse_mode="Markdown")
+            success_count += 1
+        except Exception as e:
+            fail_count += 1
+            print(f"No se pudo enviar mensaje al grupo {group_id}: {str(e)}")
+
+    bot.reply_to(message, f"✅ Mensaje enviado a {success_count} grupos. ❌ Falló en {fail_count}.")
 
 if __name__ == "__main__":
     # Notificar a los grupos que el bot ha sido encendido

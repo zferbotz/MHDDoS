@@ -24,6 +24,9 @@ if not os.path.exists(groups_file):
     with open(groups_file, "w") as f:
         json.dump({"groups": []}, f)
 
+# Guardar tiempo de inicio del bot
+start_time = time.time()
+
 def load_groups():
     """Carga los grupos desde el archivo JSON"""
     with open(groups_file, "r") as f:
@@ -227,10 +230,36 @@ def handle_help(message):
             "2. `/ping <TIPO> <IP/HOST:PUERTO> <HILOS> <MS>`: Inicia un ataque de ping.\n"
             "3. `/addgroup <ID del grupo>`: Agrega un grupo a la lista de grupos permitidos (solo admin).\n"
             "4. `/removegroup <ID del grupo>`: Elimina un grupo de la lista de grupos permitidos (solo admin).\n"
-            "5. `/help`: Muestra esta ayuda.\n\n"
+            "5. `/help`: Muestra esta ayuda.\n"
+            "6. `/timeactive`: Muestra el tiempo activo del bot y el tiempo restante antes de que se cierre.\n\n"
             "¡Juega con responsabilidad y diviértete! 🎮"
         ),
         parse_mode="Markdown",
+    )
+
+@bot.message_handler(commands=["timeactive"])
+def handle_timeactive(message):
+    if not is_allowed(message):
+        return
+
+    elapsed_time = time.time() - start_time
+    remaining_time = max(0, 140 * 60 - elapsed_time)  # 140 minutos en segundos
+
+    elapsed_minutes = int(elapsed_time // 60)
+    elapsed_seconds = int(elapsed_time % 60)
+
+    remaining_minutes = int(remaining_time // 60)
+    remaining_seconds = int(remaining_time % 60)
+
+    bot.reply_to(
+        message,
+        (
+            f"🕒 *Tiempo activo del bot:*\n"
+            f"✅ *Tiempo transcurrido:* {elapsed_minutes}m {elapsed_seconds}s\n"
+            f"⚠️ *Tiempo restante:* {remaining_minutes}m {remaining_seconds}s\n\n"
+            "🚀 *Recuerda que Codespaces se cierra automáticamente después de 140 minutos.*"
+        ),
+        parse_mode="Markdown"
     )
 
 if __name__ == "__main__":

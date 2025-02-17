@@ -175,8 +175,7 @@ def handle_unmute(message):
             bot.restrict_chat_member(
     message.chat.id,
     user_id,
-    ChatPermissions(can_send_messages=True)
-)
+    ChatPermissions(can_send_messages=True))
 bot.reply_to(message, "🔊 Usuario desmuteado")
 
 # ================= SISTEMA DE ENLACES Y PALABRAS =================
